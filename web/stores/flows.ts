@@ -21,6 +21,7 @@ export const useFlowsStore = defineStore('flowsStore', {
 		flows_installed: <Flow[]>[],
 		flows_tags_filter: <string[]>[],
 		flows_search_filter: '',
+		show_unsupported_flows: false,
 		sub_flows: <Flow[]>[],
 		flows_favorite: <string[]>[],
 		current_flow: <Flow>{},
@@ -41,6 +42,9 @@ export const useFlowsStore = defineStore('flowsStore', {
 					.filter(flow => flow.name.toLowerCase().includes(state.flows_search_filter.toLowerCase())
 						|| flow.display_name.toLowerCase().includes(state.flows_search_filter.toLowerCase())
 						|| flow.description.toLowerCase().includes(state.flows_search_filter.toLowerCase()))
+			}
+			if (!state.show_unsupported_flows) {
+				flows = flows.filter(flow => flow.is_supported_by_workers)
 			}
 			return flows
 		},
@@ -67,10 +71,17 @@ export const useFlowsStore = defineStore('flowsStore', {
 						|| flow.description.toLowerCase().includes(state.flows_search_filter.toLowerCase()))
 				console.debug('filter flows by search:', state.flows_search_filter, flows)
 			}
+			if (!state.show_unsupported_flows) {
+				flows = flows.filter(flow => flow.is_supported_by_workers)
+			}
 			return paginate(flows, state.page, state.pageSize) as Flow[]
 		},
-		flowByName() {
-			return (name: string) => this.flows.find(flow => flow.name === name)
+		flowByName(state) {
+			const flows: Flow[] = [
+				...state.flows_installed,
+				...state.flows_available,
+			]
+			return (name: string) => flows.find(flow => flow.name === name)
 		},
 		flowResultsByName(state) {
 			return (name: string) => {
@@ -976,6 +987,7 @@ export const useFlowsStore = defineStore('flowsStore', {
 				const options = JSON.parse(user_options)
 				this.resultsPageSize = Number(options.resultsPageSize) || 5
 				this.outputMaxSize = Number(options.outputMaxSize) || 512
+				this.show_unsupported_flows = options.showUnsupportedFlows || false
 			}
 		},
 
@@ -983,6 +995,7 @@ export const useFlowsStore = defineStore('flowsStore', {
 			localStorage.setItem('user_options', JSON.stringify({
 				resultsPageSize: this.resultsPageSize,
 				outputMaxSize: this.outputMaxSize,
+				showUnsupportedFlows: this.show_unsupported_flows,
 			}))
 		},
 
@@ -1020,6 +1033,9 @@ export interface Flow {
 	is_seed_supported: boolean
 	is_count_supported: boolean
 	is_translations_supported: boolean
+	is_supported_by_workers: boolean
+	is_macos_supported: boolean
+	required_memory_gb?: number
 }
 
 export interface Model {
